@@ -8,43 +8,13 @@ import {
   TouchableOpacity,
   Animated,
   TextInput,
-  Modal,
-  FlatList
 } from 'react-native';
 import { LinearGradient } from 'react-native-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useFadeIn, useSlideIn } from '../hooks/useAnimations';
 import axios from 'axios';
-import RNFS from 'react-native-fs';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-// File-based storage for Hugging Face token
-const hfStorage = {
-  async setItem(key: string, value: string): Promise<void> {
-    try {
-      const filePath = `${RNFS.DocumentDirectoryPath}/${key}.json`;
-      await RNFS.writeFile(filePath, value, 'utf8');
-    } catch (error) {
-      console.log('HF Storage setItem error:', error);
-    }
-  },
-
-  async getItem(key: string): Promise<string | null> {
-    try {
-      const filePath = `${RNFS.DocumentDirectoryPath}/${key}.json`;
-      const exists = await RNFS.exists(filePath);
-
-      if (!exists) return null;
-
-      const value = await RNFS.readFile(filePath, 'utf8');
-      return value;
-    } catch (error) {
-      console.log('HF Storage getItem error:', error);
-      return null;
-    }
-  }
-};
 
 const { width, height } = Dimensions.get('window');
 
@@ -84,7 +54,6 @@ const DashboardScreen: React.FC = () => {
   const { user, logout } = useAuth();
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
-  const [hfToken, setHfToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   // Animation values for loading dots
@@ -95,17 +64,6 @@ const DashboardScreen: React.FC = () => {
 
   // Animation value for thinking text
   const thinkingTextOpacity = useRef(new Animated.Value(1)).current;
-
-  // Load saved Hugging Face token
-  useEffect(() => {
-    const loadToken = async () => {
-      const savedToken = await hfStorage.getItem('hfToken');
-      if (savedToken) {
-        setHfToken(savedToken);
-      }
-    };
-    loadToken();
-  }, []);
 
 
   // Auto-scroll to bottom when messages change
@@ -215,25 +173,29 @@ const DashboardScreen: React.FC = () => {
     try {
       // Call Hugging Face Mistral AI API
       console.log('🤖 Sending message to Hugging Face:', message.trim());
-      console.log('🔑 Using token:', hfToken.substring(0, 10) + '...');
 
       const response = await axios.post(
         "https://openrouter.ai/api/v1/chat/completions",
         {
-          model: "stepfun/step-3.5-flash:free",
+          // model: "stepfun/step-3.5-flash:free",
           // model: "x-ai/grok-4.1-fast",
           // model: "meta-llama/llama-3.1-8b-instruct",
-          // model: "openai/gpt-4o-mini",
+          model: "openai/gpt-4o-mini",
           messages: [
             {
               role: "user",
-              content: message.trim()
+              content: [
+                {
+                  type: "text",
+                  text: message.trim()
+                }
+              ]
             }
           ]
         },
         {
           headers: {
-            Authorization: "Bearer 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",
+            "Authorization": "Bearer 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",
             "Content-Type": "application/json"
           },
           timeout: 30000
